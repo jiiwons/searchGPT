@@ -17,10 +17,12 @@ class FrontendService:
         used_columns = ['docno', 'name', 'url', 'url_id', 'text', 'len_text', 'in_scope']  # TODO: add url_id
         self.gpt_input_text_df = gpt_input_text_df[used_columns]
 
+    # 설정 파일에서 프롬프트 예제 가져오기
     @staticmethod
     def get_prompt_examples_json():
         with open(os.path.join(get_project_root(), 'src/config/config.yaml'), encoding='utf-8') as f:
             config = yaml.load(f, Loader=yaml.FullLoader)
+            # 프롬프트 예제 데이터 추출
             col1_list = config['frontend_service']['prompt_examples']['col1_list']
             col2_list = config['frontend_service']['prompt_examples']['col2_list']
             prompt_examples_json = {
@@ -29,6 +31,7 @@ class FrontendService:
             }
             return prompt_examples_json
 
+    # 응답 텍스트(response_text)와 GPT 입력 텍스트 데이터프레임(gpt_input_text_df)을 기반으로 데이터 JSON 생성
     def get_data_json(self, response_text, gpt_input_text_df):
         def create_response_json_object(text, type):
             return {"text": text, "type": type}
@@ -36,22 +39,25 @@ class FrontendService:
         def create_source_json_object(footnote, domain, url, title, text):
             return {"footnote": footnote, "domain": domain, "url": url, "title": title, "text": text}
 
+        # 응답 텍스트에서 URL ID 재정렬
         def reorder_url_id(response_text, gpt_input_text_df):
-            # response_text: find reference in text & re-order
+            # response_text: find reference in text & re-order(응답 텍스트에서 URL ID 추출 및 정렬)
             url_id_list = [int(x) for x in dict.fromkeys(re.findall(r'\[([0-9]+)\]', response_text))]
             url_id_map = dict(zip(url_id_list, range(1, len(url_id_list) + 1)))
 
+            # 응답 텍스트에서 URL ID를 재정렬된 값으로 변경
             response_text = re.sub(r'\[([0-9]+)\]', lambda x: f"[{url_id_map[int(x.group(1))]}]", response_text)
-            # for multiple references in same sentence, sort as per url_id
+            # for multiple references in same sentence, sort as per url_id(여러 참조가 같은 문장에 있는 경우, URL ID 정렬)
             refs = set(re.findall(r'(\[[0-9\]\[]+\])', response_text))
             for ref in refs:
                 response_text = response_text.replace(ref, '[' + ']['.join(sorted(re.findall(r'\[([0-9]+)\]', ref))) + ']')
 
-            # gpt_input_text_df: find reference in text & re-order
+            # gpt_input_text_df: find reference in text & re-order(데이터프레임에서 URL ID가 재정렬된 값으로 필터링 및 변경)
             in_scope_source_df = gpt_input_text_df[gpt_input_text_df['url_id'].isin(url_id_map.keys()) & gpt_input_text_df['in_scope']].copy()
             in_scope_source_df['url_id'] = in_scope_source_df['url_id'].map(url_id_map)
             return response_text, in_scope_source_df
 
+        # 응답 텍스트에서 JSON 객체 생성
         def get_response_json(response_text):
             def create_response_json_object(text, type):
                 return {"text": text, "type": type}
@@ -69,14 +75,20 @@ class FrontendService:
                     response_json.append(create_response_json_object(sentence, "newline"))
                 else:
                     response_json.append(create_response_json_object(sentence, "response"))
+            # 예시
+            # 참조: {"text": "[1]", "type": "footnote"}
+            # 줄바꿈: {"text": "\n", "type": "newline"}
+            # 응답: {"text": "This is a response text.", "type": "response"}
             return response_json
 
         def get_source_json(in_scope_source_df):
+            # docno 컬럼의 데이터 타입 변환 및 정렬
             in_scope_source_df.loc[:, 'docno'] = in_scope_source_df['docno'].astype(int)
             in_scope_source_df.sort_values('docno', inplace=True)
             source_text_list = []
             source_json = []
             source_url_df = in_scope_source_df[['url_id', 'url', 'name', 'snippet']].drop_duplicates().sort_values('url_id').reset_index(drop=True)
+            # 출처 정보 처리
             for index, row in source_url_df.iterrows():
                 url_text = ''
                 url_text += f"[{row['url_id']}] {row['url']}\n"
@@ -93,6 +105,7 @@ class FrontendService:
             source_json = sorted(source_json, key=lambda x: x['footnote'])
             return source_json, source_text
 
+        # 공통 단어 시퀀스를 기반으로 응답 텍스트와 소스 텍스트에 색상 코딩 적용
         def get_explainability_json(response_text, source_text):
             def get_colors():
                 return ['#ffe3e8', '#f1e1ff', '#c5d5ff', '#c5efff', '#d6fffa', '#e7ffe7', '#f7ffa7', '#fff3b3', '#ffdfdf', '#ffcaca']
@@ -120,10 +133,15 @@ class FrontendService:
             source_explain_json = get_explain_json(source_text, word_color_dict)
             return response_explain_json, source_explain_json
 
+        # URL ID 재정렬 및 데이터프레임 업데이트
         response_text, in_scope_source_df = reorder_url_id(response_text, gpt_input_text_df)
+        # 응답 JSON 객체 생성
         response_json = get_response_json(response_text)
+        # 소스 JSON 객체 생성
         source_json, source_text = get_source_json(in_scope_source_df)
+        # 설명 가능성 JSON 객체 생성
         response_explain_json, source_explain_json = get_explainability_json(response_text, source_text)
+        # 프롬프트 예제 JSON 객체 가져오기
         prompt_examples_json = FrontendService.get_prompt_examples_json()
 
         return source_text, {'response_json': response_json,
@@ -152,6 +170,7 @@ if __name__ == '__main__':
     import pickle
 
     folder_path = r""
+    # 폴더 내 파일 목록 가져오기
     pickle_files = [os.path.join(folder_path, f) for f in os.listdir(folder_path)]
     for file_path in pickle_files:
         if not '8d' in file_path:

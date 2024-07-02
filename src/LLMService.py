@@ -19,11 +19,15 @@ class LLMService(ABC):
     def clean_response_text(self, response_text: str):
         return response_text.replace("\n", "")
 
+    # 프롬프트를 생성
     def get_prompt(self, search_text: str, gpt_input_text_df: pd.DataFrame):
         logger.info(f"OpenAIService.get_prompt. search_text: {search_text}, gpt_input_text_df.shape: {gpt_input_text_df.shape}")
         prompt_length_limit = 3000  # obsolete
+        # 소스 사용 여부 확인
         is_use_source = self.config.get('source_service').get('is_use_source')
+        # 프롬프트 생성
         if is_use_source:
+            # 소스 사용 설정 시, 해당 정보를 기반으로 프롬프트 생성
             prompt_engineering = f"\n\nAnswer the question '{search_text}' using above information with about 100 words:"
             prompt = ""
             for index, row in gpt_input_text_df.iterrows():
@@ -32,8 +36,11 @@ class LLMService(ABC):
             prompt = prompt[:prompt_length_limit]
             return prompt + prompt_engineering
         else:
+            # 소스 사용 설정이 아닐 때, 기본적인 프롬프트 생성
             return f"\n\nAnswer the question '{search_text}' with about 100 words:"
 
+    # 두 번째 버전의 프롬프트 생성 메서드
+    # 주로 정보를 검색하고 해당 정보를 기반으로 특정 질문에 대한 답변을 생성할 때 활용됨
     def get_prompt_v2(self, search_text: str, gpt_input_text_df: pd.DataFrame):
         logger.info(f"OpenAIService.get_prompt_v2. search_text: {search_text}, gpt_input_text_df.shape: {gpt_input_text_df.shape}")
         context_str = ""
@@ -58,6 +65,7 @@ Answer:
 """
         return prompt
 
+    # 세 번째 버전의 프롬프트 생성 메서드
     def get_prompt_v3(self, search_text: str, gpt_input_text_df: pd.DataFrame):
         language = self.config.get('general').get('language')
         if not self.config.get('source_service').get('is_use_source'):

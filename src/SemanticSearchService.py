@@ -181,6 +181,7 @@ class BatchOpenAISemanticSearchService:
             embeddings += [r["embedding"] for r in response["data"]]
         return embeddings
 
+    # 데이터프레임의 텍스트에 대한 임베딩을 계산하고 임베딩 열을 추가하여 반환
     @staticmethod
     def compute_embeddings_for_text_df(text_df: pd.DataFrame):
         """Compute embeddings for a text_df and return the text_df with the embeddings column added."""
@@ -189,6 +190,7 @@ class BatchOpenAISemanticSearchService:
         text_df['embedding'] = BatchOpenAISemanticSearchService.batch_call_embeddings(text_df['text'].tolist())
         return text_df
 
+    # 관련 소스를 검색하여 결과 데이터프레임을 반환
     def search_related_source(self, text_df: pd.DataFrame, target_text, n=30):
         if not self.config.get('source_service').get('is_use_source'):
             col = ['name', 'url', 'url_id', 'snippet', 'text', 'similarities', 'rank', 'docno']
@@ -205,14 +207,16 @@ class BatchOpenAISemanticSearchService:
         result_df['docno'] = range(1, len(result_df) + 1)
         return result_df
 
+    # GPT 입력 데이터프레임을 후처리하여 반환
     @staticmethod
     def post_process_gpt_input_text_df(gpt_input_text_df, prompt_token_limit):
-        # clean out of prompt texts for existing [1], [2], [3]... in the source_text for response output stability
+        # clean out of prompt texts for existing [1], [2], [3]... in the source_text for response output stability([1], [2], [3]... 제거)
         gpt_input_text_df['text'] = gpt_input_text_df['text'].apply(lambda x: re.sub(r'\[[0-9]+\]', '', x))
-        # length of char and token
+        # length of char and token( 문자열 길이, 토큰 계산)
         gpt_input_text_df['len_text'] = gpt_input_text_df['text'].apply(lambda x: len(x))
         gpt_input_text_df['len_token'] = gpt_input_text_df['text'].apply(lambda x: num_tokens_from_string(x))
 
+        # 누적 문자열 길이와 개수
         gpt_input_text_df['cumsum_len_text'] = gpt_input_text_df['len_text'].cumsum()
         gpt_input_text_df['cumsum_len_token'] = gpt_input_text_df['len_token'].cumsum()
 

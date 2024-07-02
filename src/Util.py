@@ -22,7 +22,7 @@ def setup_logger(tag):
     logger.addHandler(handler)
     return logger
 
-
+# 결과를 캐시에 저장하는 함수
 def save_result_cache(path: Path, hash: str, type: str, **kwargs):
     cache_dir = path / type
     os.makedirs(cache_dir, exist_ok=True)
@@ -30,18 +30,18 @@ def save_result_cache(path: Path, hash: str, type: str, **kwargs):
     with open(path, 'wb') as f:
         pickle.dump(kwargs, f)
 
-
+# 캐시에서 결과를 로드하는 함수
 def load_result_from_cache(path: Path, hash: str, type: str):
     path = path / type / f'{hash}.pickle'
     with open(path, 'rb') as f:
         return pickle.load(f)
 
-
+# 캐시 파일의 존재 여부를 확인하는 함수
 def check_result_cache_exists(path: Path, hash: str, type: str) -> bool:
     path = path / type / f'{hash}.pickle'
     return True if os.path.exists(path) else False
 
-
+# 최대 캐시 개수를 초과하는 경우 가장 오래된 파일을 삭제하는 함수
 def check_max_number_of_cache(path: Path, type, max_number_of_cache: int = 10):
     path = path / type
     if len(os.listdir(path)) > max_number_of_cache:
@@ -49,12 +49,12 @@ def check_max_number_of_cache(path: Path, type, max_number_of_cache: int = 10):
         oldest_file = sorted(ctime_list)[0][1]
         os.remove(path / oldest_file)
 
-
+# 문장을 문단에서 추출하여 리스트로 반환하는 함수
 def split_sentences_from_paragraph(text):
     sentences = re.split(r"(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s", text)
     return sentences
 
-
+# 딕셔너리에서 특정 키워드를 제거하는 함수
 def remove_api_keys(d):
     key_to_remove = ['api_key', 'subscription_key']
     temp_key_list = []
@@ -73,7 +73,7 @@ def path_safe_string_conversion(filename: str):
     # https://stackoverflow.com/questions/7406102/create-sane-safe-filename-from-any-unsafe-string
     return "".join([c for c in filename if c.isalpha() or c.isdigit() or c == ' ']).rstrip()
 
-
+# 캐시 데코레이터
 def storage_cached(cache_type: str, cache_hash_key_name: str):
     def storage_cache_decorator(func):
         @wraps(func)

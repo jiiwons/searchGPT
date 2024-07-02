@@ -15,6 +15,7 @@ logger = setup_logger('BingService')
 class BingService:
     def __init__(self, config):
         self.config = config
+        # 설정 파일에서 텍스트 추출 서비스 선택
         extract_svc = self.config.get('source_service').get('bing_search').get('text_extract')
         if extract_svc == 'trafilatura':
             self.txt_extract_svc = TrafilaturaSvc()
@@ -31,9 +32,11 @@ class BingService:
         headers = {'Ocp-Apim-Subscription-Key': subscription_key}
 
         try:
+            # Bing 검색 API 호출
             response = requests.get(endpoint, headers=headers, params=params)
             response.raise_for_status()
 
+            # 필요한 컬럼 설정
             columns = ['name', 'url', 'snippet']
             if response.json().get('webPages'):
                 website_df = pd.DataFrame(response.json()['webPages']['value'])[columns]
@@ -45,6 +48,7 @@ class BingService:
             raise ex
         return website_df
 
+    # 각 URL을 순차적으로 호출하여 텍스트를 추출하고, 이를 데이터프레임으로 반환
     def call_urls_and_extract_sentences(self, website_df) -> pd.DataFrame:
         """
         :param:
@@ -60,13 +64,14 @@ class BingService:
                 snippet: snippet of the website given by BingAPI
                 text: setences extracted from the website
         """
+        # URL 호출 및 텍스트 추출 메서드 (단일 스레드)
         logger.info(f"BingService.call_urls_and_extract_sentences. website_df.shape: {website_df.shape}")
         name_list, url_list, url_id_list, snippet_list, text_list = [], [], [], [], []
         for index, row in website_df.iterrows():
             logger.info(f"Processing url: {row['url']}")
             sentences = self.extract_sentences_from_url(row['url'])
             for text in sentences:
-                word_count = len(re.findall(r'\w+', text))  # approximate number of words
+                word_count = len(re.findall(r'\w+', text))  # approximate number of words(단어 수 세기)
                 if word_count < 8:
                     continue
                 name_list.append(row['name'])
@@ -78,6 +83,7 @@ class BingService:
                                columns=['name', 'url', 'url_id', 'snippet', 'text'])
         return text_df
 
+    # # 단일 URL 호출 및 텍스트 추출 메서드
     def call_one_url(self, website_tuple):
         name, url, snippet, url_id = website_tuple
         logger.info(f"Processing url: {url}")
@@ -85,6 +91,7 @@ class BingService:
         logger.info(f"  receive sentences: {len(sentences)}")
         return sentences, name, url, url_id, snippet
 
+    # 각 URL을 병렬로 호출하여 텍스트를 추출하고, 이를 데이터프레임으로 반환
     @storage_cached('bing_search_website_content', 'website_df')
     def call_urls_and_extract_sentences_concurrent(self, website_df):
         logger.info(f"BingService.call_urls_and_extract_sentences_async. website_df.shape: {website_df.shape}")

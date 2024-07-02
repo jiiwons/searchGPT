@@ -3,14 +3,14 @@ import tiktoken
 
 def remove_substrings(strings):
     """
-    Remove any string that is a substring of another string
+    Remove any string that is a substring of another string(문자열 중에서 다른 문자열의 부분 문자열인 경우 제거)
     Input ["abc", "ab", "c"]
     Output ["abc", "c"]
     """
-    # Sort the strings by length in descending order
+    # Sort the strings by length in descending order(문자열을 길이에 따라 내림차순으로 정렬)
     strings_sorted = sorted(strings, key=len, reverse=False)
 
-    # Remove any string that is a substring of another string
+    # Remove any string that is a substring of another string(다른 문자열의 부분 문자열인 경우 제거)
     result = []
     for i in range(len(strings_sorted)):
         is_substring = False
@@ -26,18 +26,18 @@ def remove_substrings(strings):
 
 def get_longest_common_word_sequences(paragraph1, paragraph2, k=10):
     """
-    Find the longest common subsequences of words between two paragraphs
+    Find the longest common subsequences of words between two paragraphs(두 단락 사이의 가장 긴 공통 단어 부분 수열을 찾음)
     Input: p1: "The quick brown fox jumps over the lazy dog", p2: "The quick brown dog jumps over the lazy fox"
     Output: ["jumps over the lazy", "the quick brown"]
     """
-    # Tokenize the paragraphs into lists of words
+    # Tokenize the paragraphs into lists of words(단어로 토큰화)
     word_lists1 = [word.lower() for word in paragraph1.split()]
     word_lists2 = [word.lower() for word in paragraph2.split()]
 
-    # Initialize a table to store the lengths of common subsequences
+    # Initialize a table to store the lengths of common subsequences(공통 부분 수열의 길이를 저장할 테이블을 초기화)
     table = [[0] * (len(word_lists2) + 1) for _ in range(len(word_lists1) + 1)]
 
-    # Fill in the table by comparing each pair of words
+    # Fill in the table by comparing each pair of words(각 단어 쌍을 비교하여 테이블을 채움)
     common_sequences = []
     for i in range(1, len(word_lists1) + 1):
         for j in range(1, len(word_lists2) + 1):
@@ -52,6 +52,7 @@ def get_longest_common_word_sequences(paragraph1, paragraph2, k=10):
                 table[i][j] = 0
 
     # Sort the common sequences by length in descending order and return the top k longest sequences
+    #(길이에 따라 공통 부분 수열을 내림차순으로 정렬하고 상위 k개를 반환)
     common_sequences = remove_substrings(common_sequences)
     longest_sequences = sorted(common_sequences, key=len, reverse=True)[:k]
     min_sequence_len = 10
@@ -61,7 +62,7 @@ def get_longest_common_word_sequences(paragraph1, paragraph2, k=10):
 
 def split_with_delimiters(string, delimiter_list):
     """
-    Key point if this function is it will preserve the delimiters to serve the purpose
+    Key point if this function is it will preserve the delimiters to serve the purpose(구분자를 기준으로 문자열을 분할)
     Input: ("is fine-tuned from a gpt-3.5 series", ["fine-tuned", "gpt-3.5"])
     Output: ['is ', 'fine-tuned', ' from a ', 'gpt-3.5', ' series']
     """
@@ -85,7 +86,7 @@ def split_with_delimiters(string, delimiter_list):
 
 def num_tokens_from_string(string: str) -> int:
     """
-    Returns the number of tokens in a text string.
+    Returns the number of tokens in a text string.(주어진 문자열의 토큰 수를 반환)
     https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
     """
     encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
